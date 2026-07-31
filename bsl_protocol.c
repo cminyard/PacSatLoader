@@ -1,6 +1,6 @@
 
 #include "bsl_protocol.h"
-#include "crc.h"
+#include "crc32.h"
 
 static uint32_t
 get_uint32(uint8_t *b)
