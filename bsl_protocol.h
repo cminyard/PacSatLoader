@@ -23,6 +23,7 @@
 #define BSL_CMD_START_APPLICATION 0X40
 #define BSL_CMD_CHANGE_BAUD_RATE 0X52
 
+/* First bytes of commands and responses. */
 #define BSL_CMD_HEADER 0x80
 #define BSL_RSP_HEADER 0x08
 
@@ -48,7 +49,7 @@
 #define BSL_RSP_DETAILED_ERROR 0X3A
 
 /*
- * Errors in responses.
+ * Errors in message response.
  */
 #define BSL_RSP_SUCCESS 0x00
 #define BSL_RSP_ERR_BSL_LOCKED 0X01
@@ -63,6 +64,10 @@
 #define BSL_RSP_ERR_INVALID_ALIGNMENT 0X0A
 #define BSL_RSP_ERR_INVALID_LENGTH 0X0B
 
+/* Detailed error in detailed error response. */
+#define BSL_ERR_DETAILED 0xf0
+
+/* Baud rates for change baud rate command. */
 #define BSL_BAUD_4800 1
 #define BSL_BAUD_9600 2
 #define BSL_BAUD_19200 3
@@ -83,43 +88,77 @@
 #define BSL_DEVINFO_BCR_CONFIGURATION_ID 16
 #define BSL_DEVINFO_BSL_CONFIGURATION_ID 20
 
+/*
+ * Internal errors for things that go wrong in this software.
+ */
+#define BSL_INTERNAL_ERR 0x70
+#define BSL_INTERNAL_INUSE 0x71
+#define BSL_INTERNAL_TOO_BIG 0x72
+#define BSL_INTERNAL_TIMED_OUT 0x73
+#define BSL_INTERNAL_INVALID_RESPONSE 0x74
+#define BSL_INTERNAL_RCV_TOO_BIG 0x75
+#define BSL_INTERNAL_CRC_FAILURE 0x76
+
 struct bsl_protocol {
+    bool is_host;
+    unsigned int rx_header_id; /* 0x80 on the target, 0x08 on the host. */
+    unsigned int tx_header_id; /* 0x08 on the target, 0x80 on the host. */
+
     uint8_t rxbuffer[BSL_MAX_MSG_SIZE];
     unsigned int rxlen;
     unsigned int expected_len;
     volatile bool msg_ready;
 
+    /* For the host waiting on a response from the target. */
+    enum wait_state {
+	BSL_NOT_WAITING = 0,
+	BSL_WAITING_ACK,
+	BSL_WAITING_RSP
+    } wait_state;
+
     uint8_t txbuffer[BSL_MAX_MSG_SIZE];
 
     uint8_t device_info[24];
 
+    /* For use by the user. */
     void *cb_data;
 
-    /* Send a message to the host. */
-    void (*send_msg)(struct bsl_protocol *p,
-		     uint8_t *data, unsigned int len);
+    /*
+     * Send a message to the other end.  Returns BSL_ACK (0) for
+     * success or BSL_INTERNAL_xxx on an error.
+     */
+    uint8_t (*send_msg)(struct bsl_protocol *p,
+			uint8_t *data, unsigned int len);
 
-    /* Erase all memory.  Returns a BCL_RSP_ERR_xxx */
-    uint8_t (*erase_all)(struct bsl_protocol *p);
+    /*
+     * Called when a full message is ready from the bsl_handle_xxx()
+     * routines.  Called from that context, so may not be able to
+     * schedule.  If this is called, bsl_xxx_check() should be called
+     * in a context that can block. Optional, may be NULL.
+     */
+    void (*rx_msg_ready)(struct bsl_protocol *p);
 
-    /* Erase a range memory.  Returns a BCL_RSP_ERR_xxx */
-    uint8_t (*erase_range)(struct bsl_protocol *p,
-			   uint32_t start_addr, uint32_t end_addr);
-    /* Write the given data.  Returns a BCL_RSP_ERR_xxx */
-    uint8_t (*write_data)(struct bsl_protocol *p,
-			  uint32_t addr, uint8_t *data, uint32_t len);
-    /* Write the given data.  Returns a BCL_RSP_ERR_xxx */
-    uint8_t (*read_data)(struct bsl_protocol *p,
-			 uint32_t addr, uint8_t *data, uint32_t len);
-    /* Return the CRC32 for the given data range.  Returns a BCL_RSP_ERR_xxx */
-    uint8_t (*validate_data)(struct bsl_protocol *p,
-			     uint32_t addr, uint32_t len, uint32_t *crc);
-    /* Start the application. */
-    void (*start_app)(struct bsl_protocol *p);
-    /* Change the baud rate. */
-    bool (*change_baud)(struct bsl_protocol *p, uint8_t baud);
+    /*
+     * For host only, got an ack.  Returns true if a message is coming
+     * next, false if not.  Called from a low-level context.  Required
+     * on a host, set to NULL on a target.
+     */
+    bool (*got_ack)(struct bsl_protocol *p, uint8_t ack);
 };
 
+uint32_t bsl_get_uint32(uint8_t *b);
+void bsl_set_uint32(uint8_t *b, uint32_t v);
+uint16_t bsl_get_uint16(uint8_t *b);
+void bsl_set_uint16(uint8_t *b, uint16_t v);
+
+/* Put data in p->txbuffer[4..len + 4] and call this to send.  Returns */
+uint8_t bsl_send_buffer(struct bsl_protocol *p, uint8_t id, unsigned int len);
+
+/*
+ * Handle a byte from the serial port.  This only stores the data, and
+ * can be called from an interrupt handler or other constrained context.
+ * You must schedule bsl_check() to be called after adding data.
+ */
 void bsl_handle_byte(struct bsl_protocol *p, uint8_t byte);
 
 /*
@@ -127,12 +166,6 @@ void bsl_handle_byte(struct bsl_protocol *p, uint8_t byte);
  * bsl_handle_byte() on each byte.
  */
 void bsl_handle_buffer(struct bsl_protocol *p, uint8_t *data, unsigned int len);
-
-/*
- * Check to see if anything needs to be done, should be called
- * after bsl_handle_xxx().
- */
-void bsl_check(struct bsl_protocol *p);
 
 /* Set various values in the device_info array. */
 void bsl_devinfo_set_command_interpreter_version(struct bsl_protocol *p,
@@ -151,5 +184,15 @@ void bsl_devinfo_set_bcr_configuration_id(struct bsl_protocol *p,
 					  unsigned int value);
 void bsl_devinfo_set_bsl_configuration_id(struct bsl_protocol *p,
 					  unsigned int value);
+
+/* Get various values in the device_info array. */
+unsigned int bsl_devinfo_get_command_interpreter_version(struct bsl_protocol *p);
+unsigned int bsl_devinfo_get_build_id(struct bsl_protocol *p);
+unsigned int bsl_devinfo_get_application_version(struct bsl_protocol *p);
+unsigned int bsl_devinfo_get_active_plug_in_interface_version(struct bsl_protocol *p);
+unsigned int bsl_devinfo_get_bsl_max_buffer_size(struct bsl_protocol *p);
+unsigned int bsl_devinfo_get_bsl_buffer_start_address(struct bsl_protocol *p);
+unsigned int bsl_devinfo_get_bcr_configuration_id(struct bsl_protocol *p);
+unsigned int bsl_devinfo_get_bsl_configuration_id(struct bsl_protocol *p);
 
 #endif /* BSL_PROTOCOL_H */
