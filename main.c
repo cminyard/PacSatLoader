@@ -6,6 +6,7 @@
 #include <pinmux.h>
 #include <gio.h>
 #include <reg_system.h>
+#include <sys_core.h>
 
 #define COM2_BAUD 38400
 
@@ -16,6 +17,8 @@ uint32_t *int_vec_ptr __attribute__((section(".vecptr")));
 
 void startup(void)
 {
+    int_vec_ptr = &resetEntry;
+
     gioInit();
     muxInit();
     sciInit();
@@ -23,9 +26,17 @@ void startup(void)
     sciSetBaudrate(sciREG, COM2_BAUD);
 }
 
+#pragma CODE_STATE(_c_entry, 32)
+#pragma INTERRUPT(_c_entry, RESET)
+
 void _c_entry(void)
 {
-    int_vec_ptr = &resetEntry;
+    volatile unsigned int time;
+
+    /* Do basic config so we can use the stack and get to the main loader. */
+    _coreInitRegisters_();
+    _coreInitStackPointer_();
+    _coreEnableEventBusExport_();
 
     /* The ECLK pin controls the bootstrap loader function. */
     systemREG1->SYSPC2 = 0; /* ECLK is a GIO input. */
