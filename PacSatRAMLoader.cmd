@@ -57,7 +57,8 @@ MEMORY
     /* Area of memory saved across reset.  Used in sys_startup.c */
     SAVEAREA (RW) : origin=0x08001504 length=0x000000fc
 
-    RAM      (RW) : origin=0x08001600 length=0x0001ea00
+    RAM      (RW) : origin=0x08001600 length=0x00000a00
+    /* RAM we can load in runs from 0x08002000 to 0x08020000. */
 }
 
 /*----------------------------------------------------------------------------*/

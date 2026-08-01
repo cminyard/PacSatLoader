@@ -2,6 +2,24 @@
 #include "bsl_target.h"
 #include "crc32.h"
 
+void
+bsl_target_setup(struct bsl_target *t,
+		 uint8_t (*send_msg)(struct bsl_protocol *p,
+				     uint8_t *data, unsigned int len),
+		 void (*rx_msg_ready)(struct bsl_protocol *p),
+		 void *cb_data)
+{
+    memset(t, 0, sizeof(*t));
+
+    t->p.is_host = false;
+    t->p.rx_header_id = BSL_CMD_HEADER;
+    t->p.tx_header_id = BSL_RSP_HEADER;
+    t->p.cb_data = t;
+    t->p.send_msg = send_msg;
+    t->p.rx_msg_ready = rx_msg_ready;
+    t->cb_data = cb_data;
+}
+
 static void
 bsl_send_ack(struct bsl_protocol *p, uint8_t ack)
 {
@@ -26,7 +44,7 @@ reset_receive_ack(struct bsl_protocol *p, uint8_t ack)
 static void
 reset_receive_msg(struct bsl_target *t, uint8_t rsp)
 {
-    struct bsl_protocol *p = t->p;
+    struct bsl_protocol *p = &t->p;
 
     reset_receive_ack(p, BSL_ACK);
     p->txbuffer[4] = rsp;
@@ -40,7 +58,7 @@ reset_receive_msg(struct bsl_target *t, uint8_t rsp)
 void
 bsl_target_check(struct bsl_target *t)
 {
-    struct bsl_protocol *p = t->p;
+    struct bsl_protocol *p = &t->p;
     uint32_t msg_crc, calc_crc;
     uint8_t rsp, *data;
     unsigned int len;

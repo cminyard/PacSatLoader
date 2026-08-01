@@ -4,7 +4,7 @@
 #include "bsl_protocol.h"
 
 struct bsl_target {
-    struct bsl_protocol *p;
+    struct bsl_protocol p;
 
     /* For use by the user. */
     void *cb_data;
@@ -29,6 +29,12 @@ struct bsl_target {
     /* Change the baud rate. */
     bool (*change_baud)(struct bsl_target *p, uint8_t baud);
 };
+
+void bsl_target_setup(struct bsl_target *t,
+		      uint8_t (*send_msg)(struct bsl_protocol *p,
+					  uint8_t *data, unsigned int len),
+		      void (*rx_msg_ready)(struct bsl_protocol *p),
+		      void *cb_data);
 
 /*
  * Check to see if anything needs to be done, should be called after
