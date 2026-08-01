@@ -139,11 +139,10 @@ struct bsl_protocol {
     void (*rx_msg_ready)(struct bsl_protocol *p);
 
     /*
-     * For host only, got an ack.  Returns true if a message is coming
-     * next, false if not.  Called from a low-level context.  Required
-     * on a host, set to NULL on a target.
+     * For host only, got an ack.  Called from a low-level context.
+     * Required on a host, set to NULL on a target.
      */
-    bool (*got_ack)(struct bsl_protocol *p, uint8_t ack);
+    void (*got_ack)(struct bsl_protocol *p, uint8_t ack);
 };
 
 uint32_t bsl_get_uint32(uint8_t *b);

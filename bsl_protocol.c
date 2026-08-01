@@ -50,10 +50,7 @@ void bsl_handle_byte(struct bsl_protocol *p, uint8_t byte)
 	return;
 
     if (p->wait_state == BSL_WAITING_ACK) {
-	if (p->got_ack(p, byte))
-	    p->wait_state = BSL_WAITING_RSP;
-	else
-	    p->wait_state = BSL_NOT_WAITING;
+	p->got_ack(p, byte);
 	return;
     }
 
@@ -72,7 +69,7 @@ void bsl_handle_byte(struct bsl_protocol *p, uint8_t byte)
     }
     if (p->rxlen == 3) {
 	p->expected_len = bsl_get_uint16(p->rxbuffer + 1);
-	p->expected_len += 8;
+	p->expected_len += 7;
     }
 }
 
