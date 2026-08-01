@@ -1,4 +1,5 @@
 
+#include <string.h>
 #include "bsl_target.h"
 #include "crc32.h"
 
@@ -122,7 +123,7 @@ bsl_target_check(struct bsl_target *t)
 	break;
 
     case BSL_CMD_PROGRAM_DATA:
-	if (len != 8) {
+	if (len < 8) {
 	    reset_receive_ack(p, BSL_ERR_HEADER_INCORRECT);
 	    break;
 	}
@@ -131,7 +132,7 @@ bsl_target_check(struct bsl_target *t)
 	break;
 
     case BSL_CMD_PROGRAM_DATA_FAST:
-	if (len != 8) {
+	if (len < 8) {
 	    reset_receive_ack(p, BSL_ERR_HEADER_INCORRECT);
 	    break;
 	}

@@ -11,6 +11,7 @@
 #include <sys_core.h>
 #include "crc32.h"
 #include "bsl_target.h"
+#include "loader_config.h"
 
 #define COM2_BAUD 38400
 
@@ -109,6 +110,7 @@ void startup(void)
 {
     int_vec_ptr = &resetEntry;
 
+#ifdef RAM_BOOTLOADER
     gioInit();
     muxInit();
     sciInit();
@@ -116,7 +118,11 @@ void startup(void)
     sciDisableNotification(sciREG, SCI_TX_INT | SCI_RX_INT);
     sciSetBaudrate(sciREG, COM2_BAUD);
 
-    sciSend(sciREG, 20, "RAM Bootloader Startup\r\n");
+    sciSend(sciREG, 24, "RAM Bootloader Startup\r\n");
+#else
+    /* The RAM bootloader has already initialized everything for us. */
+    sciSend(sciREG, 26, "FLASH Bootloader Startup\r\n");
+#endif
 
     bsl_target_setup(&bsl_target, serio_send_msg, NULL, NULL);
     bsl_target.erase_all = erase_all;
@@ -126,6 +132,7 @@ void startup(void)
     bsl_target.validate_data = validate_data;
     bsl_target.start_app = start_app;
     bsl_target.change_baud = change_baud;
+    bsl_devinfo_set_bsl_max_buffer_size(&bsl_target.p, BSL_MAX_BUFFER_SIZE);
 
     for (;;) {
 	pet_watchdog();
@@ -147,8 +154,7 @@ void startup(void)
 
 void _c_entry(void)
 {
-    volatile unsigned int time;
-
+#ifdef RAM_BOOTLOADER
     /* Do basic config so we can use the stack and get to the main loader. */
     _coreInitRegisters_();
     _coreInitStackPointer_();
@@ -173,6 +179,10 @@ void _c_entry(void)
 
     /* ECLK is pulled low, start the bootstrap load processing. */
     _c_int00();
+#else
+    /* The RAM bootloader has already initialized everything for us. */
+    startup();
+#endif
 }
 
 void SerialRxCharacterInterrupt(sciBASE_t *sci,uint8_t byte)

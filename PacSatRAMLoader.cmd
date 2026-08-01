@@ -35,6 +35,8 @@
 *
 */
 
+#include "loader_config.h"
+
 /*----------------------------------------------------------------------------*/
 /* Linker Settings                                                            */
 
@@ -43,6 +45,7 @@
 /*----------------------------------------------------------------------------*/
 /* Memory Map                                                                 */
 
+#ifdef RAM_BOOTLOADER
 MEMORY
 {
     VECTORS  (X)  : origin=0x00000000 length=0x00000100
@@ -78,3 +81,31 @@ SECTIONS
     .data    : {} > RAM
     .sysmem  : {} > RAM
 }
+#else
+/* We run completely from RAM. */
+MEMORY
+{
+    /* Pointer to vector table, used by bootstrap to forward exceptions. */
+    RAMVEC   (X)   : origin=0x08001500 length=0x00000004
+    VECTORS  (X)   : origin=0x08002000 length=0x00000020
+    RAM      (RWX) : origin=0x08002020 length=0x0001dfe0
+    NULL     (RWX) : origin=0x08020000 length=0x00010000
+}
+
+/*----------------------------------------------------------------------------*/
+/* Section Configuration                                                      */
+
+SECTIONS
+{
+    .real_intvecs (NOLOAD) : {} > NULL
+    .intvecs : {} > VECTORS
+    .text    : {} > RAM
+    .const   : {} > RAM
+    .cinit   : {} > RAM
+    .pinit   : {} > RAM
+    .vecptr  : {} > RAMVEC
+    .bss     : {} > RAM
+    .data    : {} > RAM
+    .sysmem  : {} > RAM
+}
+#endif
