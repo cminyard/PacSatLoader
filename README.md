@@ -5,7 +5,14 @@ This repository contains bootloader software for the PacSat project.
 The code is set up as a TI CCS (Eclipse) project.  You should be
 able to clone it into your own copy of CCS.
 
-This code has two possible output images:
+This code has two output images (set as build configurations):
+
+RAMLoader - Takes an image from the serial port and stores it in RAM.
+
+FLASHLoader - This image is loaded into RAM.  It takes an image from
+the serial port and loads it in FLASH.
+
+## RAMLoader
 
 This code is loaded into the lower 64K of RAM on the PacSat board and
 comes up first.  If the ECLK line into the processor is high, it will
@@ -17,11 +24,19 @@ https://www.ti.com/lit/ug/slau887a/slau887a.pdf?ts=1777909805211 on
 the serial port.  This bootloader is only capable of loading data into
 RAM, it does not have the ability to write to FLASH.
 
-The idea is that you would load a second-stage bootloader into RAM
-that is capable of loading the software into FLASH.  This is necessary
-because you cannot be executing from FLASH while writing to FLASH.
+The idea is that you load a second-stage bootloader into RAM, the
+FLASHLoader, that is capable of loading the software into FLASH.  This
+is necessary because you cannot be executing from FLASH while writing
+to FLASH.
 
-## Setup
+## FLASHLoader
+
+This loader runs in RAM and load an image into FLASH.  It uses the
+same basic protocol and code as the RAMLoader, except it doesn't do
+processor initialization (the RAMLoader has already done that) or look
+at the ECLK line.  And of course it stores the image in FLASH.
+
+## Build Setup
 
 ### Connecting to the launchpad
 You connect the TI launchpad board with a USB cable.  No other
@@ -139,7 +154,7 @@ Then select the main.c file and it should open fine.
 With Project > Build All it should compile, like this:
 ![image](https://github.com/user-attachments/assets/38456a9c-2e47-479d-8771-ab0a697b44f3)
 
-# Connecting to the V2 Pacsat Board
+# Connecting to the V2 and later Pacsat Board
 
 The easiest probe to use is an XDS110, which also provides a serial
 connection.  Connect to the V2 board with a ribbon cable.  In Linux the
@@ -154,46 +169,6 @@ to get the commands
 
 If the code in CCS compiled then you should be able to flash the board
 using the ICON on the toolbar.
-
-# Connecting to the PacSat booster board (Depreciated)
-If you have the Pacsat board connected to the launchpad then you will
-need a serial connection to read debug information.  You can use a USB
-Serial adapter as long as it uses 3.3V levels.  That is almost all of
-them.  If it mentions 5V that is almost always a seperate pass though
-voltage and not the TTL levels.  But check to make sure. Make up a
-cable to attach to connector J3 on the purple board.  The pins are
-marked on the PCB.  It is still 38k4 baud.
-
-### Connect the Launchpad board 
-The laucnhpad itself connects with a USB.  With it plugged in, In CCS
-press the "Flash" button: It does an initial firmware update for a
-probe then loads the code.
-
-On windows you can find the serial device from the Device Manager.
-On linux, to confirm where the serial connection is run this:
-```ls /dev > with
-Then I unplugged the serial connection from the linux box and ran
-ls /dev > without
-```
-Then diff with without gives:
-```22d21
-< gpiochip0
-206d204
-< ttyUSB0
-```
-So it is ttyUSB0
-
-### Serial Terminal
-On windows use Putty or something similar and configure for 38K4 baud.
-
-On Linux use your favorite terminal emulator or:
-```
-  sudo apt-get install minicom
-```
-
-Run minicom –s to enter setup mode and configure the ttyUSB0 serial
-port for 38k4 Note that hardware flow control MUST BE OFF or it just
-wont work!
 
 ## Credits
 Bill Reed (originator)
