@@ -1,9 +1,11 @@
-# First-stage RAM Bootloader for PacSat
+# Bootloaders for PacSat
 
 ## About
 This repository contains bootloader software for the PacSat project.
 The code is set up as a TI CCS (Eclipse) project.  You should be
 able to clone it into your own copy of CCS.
+
+This code has two possible output images:
 
 This code is loaded into the lower 64K of RAM on the PacSat board and
 comes up first.  If the ECLK line into the processor is high, it will

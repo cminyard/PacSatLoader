@@ -62,6 +62,8 @@ MEMORY
 
     RAM      (RW) : origin=0x08001600 length=0x00000a00
     /* RAM we can load in runs from 0x08002000 to 0x08020000. */
+
+    NULL     (RWX) : origin=0x08020000 length=0x00010000
 }
 
 /*----------------------------------------------------------------------------*/
@@ -71,6 +73,7 @@ SECTIONS
 {
     .real_intvecs : {} > VECTORS
     .intvecs : {} > FLASH0
+    .flash_intvecs (NOLOAD) : {} > NULL
     .text    : {} > FLASH0 
     .const   : {} > FLASH0 
     .cinit   : {} > FLASH0 
@@ -98,7 +101,8 @@ MEMORY
 SECTIONS
 {
     .real_intvecs (NOLOAD) : {} > NULL
-    .intvecs : {} > VECTORS
+    .intvecs (NOLOAD) : {} > NULL
+    .flash_intvecs : {} > VECTORS
     .text    : {} > RAM
     .const   : {} > RAM
     .cinit   : {} > RAM

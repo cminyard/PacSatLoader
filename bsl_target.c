@@ -48,8 +48,14 @@ reset_receive_msg(struct bsl_target *t, uint8_t rsp)
     struct bsl_protocol *p = &t->p;
 
     reset_receive_ack(p, BSL_ACK);
-    p->txbuffer[4] = rsp;
-    bsl_send_buffer(p, BSL_RSP_MESSAGE, 1);
+    if (rsp == BSL_ERR_DETAILED) {
+	p->txbuffer[4] = rsp;
+	bsl_set_uint16(p->txbuffer + 5, t->flash_err);
+	bsl_send_buffer(p, BSL_RSP_DETAILED_ERROR, 3);
+    } else {
+	p->txbuffer[4] = rsp;
+	bsl_send_buffer(p, BSL_RSP_MESSAGE, 1);
+    }
 }
 
 /*
@@ -145,11 +151,11 @@ bsl_target_check(struct bsl_target *t)
 	    reset_receive_ack(p, BSL_ERR_HEADER_INCORRECT);
 	    break;
 	}
+	len = bsl_get_uint32(data + 4);
 	if (len > BSL_MAX_BUFFER_SIZE) {
 	    reset_receive_msg(t, BSL_RSP_ERR_INVALID_LENGTH);
 	    break;
 	}
-	len = bsl_get_uint32(data + 4);
 	rsp = t->read_data(t, bsl_get_uint32(data), p->txbuffer + 4, len);
 	if (rsp) {
 	    reset_receive_msg(t, rsp);

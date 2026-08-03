@@ -9,6 +9,9 @@ struct bsl_target {
     /* For use by the user. */
     void *cb_data;
 
+    /* Used for BSL_ERR_DETAILED. */
+    uint16_t flash_err;
+
     /* Erase all memory.  Returns a BCL_RSP_ERR_xxx */
     uint8_t (*erase_all)(struct bsl_target *p);
 

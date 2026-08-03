@@ -10,8 +10,9 @@
 	.def real_int_vecs
 
 ;-------------------------------------------------------------------------------
-; interrupt vectors
-
+; Interrupt vectors for the RAM loader.  These are trampolines into
+; the main interrupt vectors using int_vec_ptr as the actual vector
+; table.
 real_int_vecs
         b   _c_entry
         b   tramp_undefEntry
@@ -24,10 +25,10 @@ real_int_vecs
 
 	.ref int_vec_ptr
 
-	; Trampolines for the above vectors.  int_vec_ptr holds the
-	; vector pointer we use, we load that pointer, add the offset,
-	; swap the value with the stack to restore r0, then pop into
-	; the PC.
+; Trampolines for the above vectors.  int_vec_ptr holds the
+; vector pointer we use, we load that pointer, add the offset,
+; swap the value with the stack to restore r0, then pop into
+; the PC.
 
 adr_int_vec_ptr .word int_vec_ptr
 
@@ -81,3 +82,22 @@ vPortSWI:
 	.def vPortYieldWithinAPI
 vPortYieldWithinAPI
 	pop	{pc}
+
+; Interrupt vectors for the FLASH loader are here.
+	.sect ".flash_intvecs"
+	.ref _c_entry
+	.ref _dabort
+	.ref phantomInterrupt
+	.def flash_resetEntry
+
+flash_resetEntry
+        b   _c_entry
+undefEntry
+        b   undefEntry
+        b   vPortSWI
+prefetchEntry
+        b   prefetchEntry
+        b   _dabort
+        b   phantomInterrupt
+        ldr pc,[pc,#-0x1b0]
+        ldr pc,[pc,#-0x1b0]
