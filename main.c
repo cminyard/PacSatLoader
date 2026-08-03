@@ -18,7 +18,7 @@
 #include "bsl_target.h"
 #include "loader_config.h"
 
-#ifndef RAM_BOOTLOADER
+#ifdef FLASH_BOOTLOADER
 #include "F021.h"
 #endif
 
@@ -92,7 +92,7 @@ real_start_app(struct bsl_target *p)
     app_start();
 }
 
-#else
+#elif defined(FLASH_BOOTLOADER)
 
 #define MEM_START 0x00010000
 #define MEM_END   0x000fffff
@@ -318,6 +318,8 @@ real_start_app(struct bsl_target *p)
 {
 
 }
+#else
+#error "Must define RAM_BOOTLOADER or FLASH_BOOTLOADER"
 #endif
 
 static uint8_t
@@ -357,7 +359,7 @@ change_baud(struct bsl_target *p, uint8_t baud)
 
 #ifdef RAM_BOOTLOADER
 extern uint32_t resetEntry;
-#else
+#elif defined(FLASH_BOOTLOADER)
 extern uint32_t flash_resetEntry;
 #endif
 uint32_t *int_vec_ptr __attribute__((section(".vecptr")));
@@ -375,7 +377,7 @@ void startup(void)
     sciSetBaudrate(sciREG, COM2_BAUD);
 
     //sciSend(sciREG, 24, "RAM Bootloader Startup\r\n");
-#else
+#elif defined(FLASH_BOOTLOADER)
     int_vec_ptr = &flash_resetEntry;
     /* The RAM bootloader has already initialized everything for us. */
     //sciSend(sciREG, 26, "FLASH Bootloader Startup\r\n");
@@ -443,7 +445,7 @@ void _c_entry(void)
     /* ECLK is pulled low, start the bootstrap load processing. */
     _c_int00();
 }
-#else
+#elif defined(FLASH_BOOTLOADER)
 void _c_entry(void)
 {
     /* The RAM bootloader has already initialized everything for us. */

@@ -35,8 +35,6 @@
 *
 */
 
-#include "loader_config.h"
-
 /*----------------------------------------------------------------------------*/
 /* Linker Settings                                                            */
 
@@ -84,7 +82,7 @@ SECTIONS
     .data    : {} > RAM
     .sysmem  : {} > RAM
 }
-#else
+#elif defined(FLASH_BOOTLOADER)
 /* We run completely from RAM. */
 MEMORY
 {
@@ -112,4 +110,6 @@ SECTIONS
     .data    : {} > RAM
     .sysmem  : {} > RAM
 }
+#else
+#error "Must define RAM_BOOTLOADER or FLASH_BOOTLOADER"
 #endif
