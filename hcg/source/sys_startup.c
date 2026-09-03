@@ -64,6 +64,7 @@
 
 #include "errata_SSWF021_45.h"
 /* USER CODE BEGIN (1) */
+#include "loader_config.h"
 /* USER CODE END */
 
 
@@ -100,6 +101,16 @@ void _c_int00(void);
 void _c_int00(void)
 {    
 /* USER CODE BEGIN (5) */
+    /*
+     * The interrupt vectors must be installed before the ECC test because
+     * the data abort vector gets called.
+     */
+#ifdef USE_BOOTLOADER
+    extern uint32_t resetEntry;
+    extern uint32_t *int_vec_ptr;
+    int_vec_ptr = &resetEntry;
+#else
+    /* The bootloader has already done the core init. */
 /* USER CODE END */
 
     /* Initialize Core Registers to avoid CCM Error */
@@ -121,6 +132,7 @@ void _c_int00(void)
     _coreEnableEventBusExport_();
 
 /* USER CODE BEGIN (11) */
+#endif
 /* USER CODE END */
 
         /* Workaround for Errata CORTEXR4 66 */
@@ -339,9 +351,9 @@ void _c_int00(void)
      * memory is initialized.
      */
 #define SPI1_BASE_ADDR 0xfff7f400
-#define SPI1_SPIGCR0_ADDR ((uint32_t *) (SPI1_BASE_ADDR + 0x0000))
-#define SPI1_SPIFLG_ADDR ((uint32_t *) (SPI1_BASE_ADDR + 0x0010))
-#define SPI1_MIBSPIE_ADDR ((uint32_t *) (SPI1_BASE_ADDR + 0x0070))
+#define SPI1_SPIGCR0_ADDR ((volatile uint32_t *) (SPI1_BASE_ADDR + 0x0000))
+#define SPI1_SPIFLG_ADDR ((volatile uint32_t *) (SPI1_BASE_ADDR + 0x0010))
+#define SPI1_MIBSPIE_ADDR ((volatile uint32_t *) (SPI1_BASE_ADDR + 0x0070))
 #define SPI1_MBRAM_ADDR ((void *) 0xFF0E0000)
 #define SAVE_AREA_START ((void *) 0x08001504)
 #define SAVE_AREA_LEN 0xfc

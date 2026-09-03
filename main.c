@@ -376,7 +376,7 @@ void startup(void)
     sciDisableNotification(sciREG, SCI_TX_INT | SCI_RX_INT);
     sciSetBaudrate(sciREG, COM2_BAUD);
 
-    //sciSend(sciREG, 24, "RAM Bootloader Startup\r\n");
+    sciSend(sciREG, 24, "RAM Bootloader Startup\r\n");
 #elif defined(FLASH_BOOTLOADER)
     int_vec_ptr = &flash_resetEntry;
     /* The RAM bootloader has already initialized everything for us. */
@@ -425,6 +425,44 @@ void _c_entry(void)
     _coreInitStackPointer_();
     _coreEnableEventBusExport_();
 
+#ifdef BOOTLOADER_USE_RX_LINE
+    /*
+     * If the SCI RX pin is high for a bit at boot, we go into the
+     * bootloader.  If it goes low at any time, start the payload.
+     * This way when the bootloader starts up, if you send a byte it
+     * will pull the RX line low and jump to the main payload.
+     */
+
+    /* Need this to turn on the SCI device. */
+    periphInit();
+
+    /* First set up the SCI for GPIO so we can look at the pin. */
+    sciREG->GCR0 = 0;
+    sciREG->GCR0 = 1; /* Bring the SCI out of reset. */
+    sciREG->PIO0 = 0; /* Set the SCI pins to GPIO. */
+    sciREG->PIO1 = 0; /* Set the SCI pins to inputs. */
+    sciREG->PIO7 = 0; /* Set the SCI pins to enable pull. */
+    sciREG->PIO8 = 0; /* Set the SCI pins to pull down. */
+
+    /*
+     * The loop runs around 400,000 times a second in this
+     * configuration.
+     */
+    volatile unsigned int counter = 5 * 400000;
+
+    while (--counter > 0) {
+	/* If SCI RX goes low, go to normal startup. */
+	if ((sciREG->PIO2 & 2) == 0) {
+	    /*
+	     * The payload vectors will be at 0x10000, the first will be it's
+	     * start location.
+	     */
+	    void (*real_start)(void) = (void (*)(void)) 0x10000;
+	    
+	    real_start(); /* Will never return. */
+	}
+    }
+#elif defined(BOOTLOADER_USE_ECLK_LINE)
     /* The ECLK pin controls the bootstrap loader function. */
     systemREG1->SYSPC2 = 0; /* ECLK is a GIO input. */
     systemREG1->SYSPC1 = 0; /* ECLK in GIO mode. */
@@ -441,6 +479,9 @@ void _c_entry(void)
 
         real_start(); /* Will never return. */
     }
+#else
+#error "Must define one of BOOTLOADER_USE_xx_LINE in loader_config.h"
+#endif
 
     /* ECLK is pulled low, start the bootstrap load processing. */
     _c_int00();
